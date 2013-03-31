@@ -1,0 +1,21 @@
+name: DeathInv
+main: com.github.ucchyocean.mdi.DeathInv
+version: 1.0.0
+author: ucchy
+description: Death Inventory Logging Plugin
+commands:
+  deathinv:
+    description: Death Inventory Logging Plugin
+    aliases: di
+    usage: |
+           /<command> list (player) [(page)]- Show player's death logs list.
+           /<command> show (player) (id) - Show player's detail death log.
+           /<command> get (player) (id) - Copy player's death inv to your inv.
+           /<command> temp - Temporary save your inv.
+           /<command> restore - Restore your inv from temporary save.
+    permission: deathinv
+    permission-message: You don't have "<permission>" permission.
+permissions:
+  deathinv:
+    description: Death Inventory Logging Plugin
+    default: op

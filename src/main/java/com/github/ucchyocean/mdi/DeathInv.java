@@ -28,7 +28,7 @@ public class DeathInv extends JavaPlugin {
     public void onEnable() {
 
         // 初期化
-        khandler = new KitHandler(getLogger());
+        khandler = new KitHandler();
         udhandler = new UserDataHandler(getDataFolder());
         tempItems = new Hashtable<String, String>();
         tempArmors = new Hashtable<String, String>();

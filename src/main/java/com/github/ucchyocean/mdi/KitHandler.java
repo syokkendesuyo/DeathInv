@@ -9,7 +9,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Set;
-import java.util.logging.Logger;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -36,14 +35,12 @@ public class KitHandler {
 
     private Pattern pattern;
     private Pattern patternEnchant;
-    private Logger logger;
 
     /**
      * コンストラクタ
      * @param logger プラグインのLogger
      */
-    public KitHandler(Logger logger) {
-        this.logger = logger;
+    public KitHandler() {
         pattern = Pattern.compile(REGEX_ITEM_PATTERN);
         patternEnchant = Pattern.compile(REGEX_ENCHANT_PATTERN);
     }
@@ -53,7 +50,7 @@ public class KitHandler {
      * @param data 解析元の文字列　例）"44:64,44@2:64,281:10"
      * @return ItemStackの配列
      */
-    public ArrayList<ItemStack> convertToItemStack(String data) {
+    public ArrayList<ItemStack> convertToItemStack(String data) throws Exception {
 
         ArrayList<ItemStack> items = new ArrayList<ItemStack>();
 
@@ -70,13 +67,12 @@ public class KitHandler {
      * @param info アイテム文字列表現
      * @return アイテム
      */
-    protected ItemStack convertItemInfoToItemStack(String info) {
+    protected ItemStack convertItemInfoToItemStack(String info) throws Exception {
 
         Matcher matcher = pattern.matcher(info);
 
         if ( !matcher.matches() ) {
-            logger.severe("指定された形式 " + info + " が正しく解析できません。");
-            return null;
+            throw new Exception("指定された形式 " + info + " が正しく解析できません。");
         }
 
         if ( matcher.group(1) != null ) {
@@ -99,15 +95,8 @@ public class KitHandler {
             // Materialの取得をして、正しいIDが指定されたかどうかを確認する
             Material m = Material.getMaterial(item);
             if (m == null) {
-                logger.severe("指定されたItemID " + item + " が見つかりません。");
-                return null;
+                throw new Exception("指定されたItemID " + item + " が見つかりません。");
             }
-
-            // 65個を超える量の場合は、64個ごとにItemStackにする。
-//            while (amount > 64) {
-//                items.add(getItemStack(item, 64, damage));
-//                amount -= 64;
-//            }
 
             return getItemStack(item, amount, damage);
 
@@ -132,8 +121,7 @@ public class KitHandler {
             // Materialの取得をして、正しいIDが指定されたかどうかを確認する
             Material m = Material.getMaterial(item);
             if (m == null) {
-                logger.severe("指定されたItemID " + item + " が見つかりません。");
-                return null;
+                throw new Exception("指定されたItemID " + item + " が見つかりません。");
             }
 
             // 指定エンチャントの解析
@@ -156,8 +144,7 @@ public class KitHandler {
             return getEnchantedItem(item, enchants, damage, color);
 
         } else {
-            logger.severe("内部エラー : 正規表現が正しくマッチしていません。");
-            return null;
+            throw new Exception("内部エラー : 正規表現が正しくマッチしていません。");
         }
     }
 
@@ -293,7 +280,7 @@ public class KitHandler {
      * @param info アイテムの文字列表現
      * @return アイテムの詳細情報
      */
-    public ArrayList<String> getDescFromItemInfo(String info) {
+    public ArrayList<String> getDescFromItemInfo(String info) throws Exception {
         return getDescFromItem( convertItemInfoToItemStack(info) );
     }
 

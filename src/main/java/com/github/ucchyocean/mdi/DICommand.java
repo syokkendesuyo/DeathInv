@@ -142,18 +142,27 @@ public class DICommand implements CommandExecutor {
             player.getInventory().setBoots(null);
 
             // ログからインベントリを復元する
-            ArrayList<ItemStack> items = DeathInv.khandler.convertToItemStack(log.get(0));
-            ArrayList<ItemStack> armors = DeathInv.khandler.convertToItemStack(log.get(1));
-            for ( ItemStack item : items ) {
-                player.getInventory().addItem(item);
-            }
-            player.getInventory().setHelmet(armors.get(0));
-            player.getInventory().setChestplate(armors.get(1));
-            player.getInventory().setLeggings(armors.get(2));
-            player.getInventory().setBoots(armors.get(3));
+            try {
+                if ( log.get(0).length() > 0 ) {
+                    ArrayList<ItemStack> items = DeathInv.khandler.convertToItemStack(log.get(0));
+                    for ( ItemStack item : items ) {
+                        if ( item != null )
+                            player.getInventory().addItem(item);
+                    }
+                }
+                ArrayList<ItemStack> armors = DeathInv.khandler.convertToItemStack(log.get(1));
+                player.getInventory().setHelmet(armors.get(0));
+                player.getInventory().setChestplate(armors.get(1));
+                player.getInventory().setLeggings(armors.get(2));
+                player.getInventory().setBoots(armors.get(3));
 
-            sender.sendMessage(PREINFO + "Your inv was restored from " + name + ":" + id + ".");
-            return true;
+                sender.sendMessage(PREINFO + "Your inv was restored from " + name + ":" + id + ".");
+                return true;
+                
+            } catch (Exception e) {
+                sender.sendMessage(PREERR + e.getMessage());
+                return true;
+            }
 
         } else if ( args[0].equalsIgnoreCase("temp") ) {
 
@@ -197,19 +206,27 @@ public class DICommand implements CommandExecutor {
             player.getInventory().setBoots(null);
 
             // ログからインベントリを復元する
-            ArrayList<ItemStack> items = DeathInv.khandler.convertToItemStack(tempItems);
-            ArrayList<ItemStack> armors = DeathInv.khandler.convertToItemStack(tempArmors);
-            for ( ItemStack item : items ) {
-                if ( item != null )
-                    player.getInventory().addItem(item);
-            }
-            player.getInventory().setHelmet(armors.get(0));
-            player.getInventory().setChestplate(armors.get(1));
-            player.getInventory().setLeggings(armors.get(2));
-            player.getInventory().setBoots(armors.get(3));
+            try {
+                if ( tempItems .length() > 0 ) {
+                    ArrayList<ItemStack> items = DeathInv.khandler.convertToItemStack(tempItems);
+                    for ( ItemStack item : items ) {
+                        if ( item != null )
+                            player.getInventory().addItem(item);
+                    }
+                }
+                ArrayList<ItemStack> armors = DeathInv.khandler.convertToItemStack(tempArmors);
+                player.getInventory().setHelmet(armors.get(0));
+                player.getInventory().setChestplate(armors.get(1));
+                player.getInventory().setLeggings(armors.get(2));
+                player.getInventory().setBoots(armors.get(3));
 
-            sender.sendMessage(PREINFO + "Your inv was restored from temporary data.");
-            return true;
+                sender.sendMessage(PREINFO + "Your inv was restored from temporary data.");
+                return true;
+                
+            } catch (Exception e) {
+                sender.sendMessage(PREERR + e.getMessage());
+                return true;
+            }
 
         } else if ( args[0].equalsIgnoreCase("test") ) {
 

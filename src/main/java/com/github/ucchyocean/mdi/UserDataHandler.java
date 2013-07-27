@@ -247,19 +247,36 @@ public class UserDataHandler {
 
         String time = section.getString("time", "");
         String msg = section.getString("msg", "");
-        String[] items = section.getString("items", "").split(",");
+        String items_org = section.getString("items", "");
+        String[] items = items_org.split(",");
         String[] armors = section.getString("armors", "").split(",");
+        
+        System.out.println("debug : <" + section.getString("items", "") + ">");
+        System.out.println("debug : " + items.length);
+        for ( String i : items ) {
+            System.out.println("       <" + i + ">");
+        }
 
         ArrayList<String> result = new ArrayList<String>();
         result.add("&7| &c" + time);
         result.add("&7|   &c" + msg);
         result.add("&7| items: ");
-        for ( String item : items ) {
-            result.addAll(DeathInv.khandler.getDescFromItemInfo(item));
+        if ( items_org.length() > 0 ) {
+            for ( String item : items ) {
+                try {
+                    result.addAll(DeathInv.khandler.getDescFromItemInfo(item));
+                } catch (Exception e) {
+                    result.add(e.getMessage());
+                }
+            }
         }
         result.add("&7| armors: ");
         for ( String armor : armors ) {
-            result.addAll(DeathInv.khandler.getDescFromItemInfo(armor));
+            try {
+                result.addAll(DeathInv.khandler.getDescFromItemInfo(armor));
+            } catch (Exception e) {
+                result.add(e.getMessage());
+            }
         }
 
         return result;

@@ -11,7 +11,6 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.Listener;
 import org.bukkit.event.entity.PlayerDeathEvent;
-import org.bukkit.inventory.PlayerInventory;
 
 /**
  * @author ucchy
@@ -28,10 +27,6 @@ public class PlayerDeathListener implements Listener {
 
         Player player = event.getEntity();
         String message = ChatColor.stripColor(event.getDeathMessage());
-        PlayerInventory inv = player.getInventory();
-        String items = DeathInv.khandler.convertInvToItemString(inv);
-        String armors = DeathInv.khandler.convertArmorToItemString(inv);
-
-        DeathInv.udhandler.addUserLog(player.getName(), items, armors, message);
+        DeathInv.udhandler.addUserLog(player, message);
     }
 }

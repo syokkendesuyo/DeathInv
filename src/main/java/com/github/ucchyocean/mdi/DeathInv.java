@@ -7,6 +7,7 @@ package com.github.ucchyocean.mdi;
 
 import java.util.Hashtable;
 
+import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.plugin.java.JavaPlugin;
 
 /**
@@ -15,10 +16,9 @@ import org.bukkit.plugin.java.JavaPlugin;
  */
 public class DeathInv extends JavaPlugin {
 
-    protected static KitHandler khandler;
     protected static UserDataHandler udhandler;
-    protected static Hashtable<String, String> tempItems;
-    protected static Hashtable<String, String> tempArmors;
+    protected static Hashtable<String, ConfigurationSection> tempItems;
+    protected static Hashtable<String, ConfigurationSection> tempArmors;
 
     /**
      * プラグインが有効化されたときに呼び出されるメソッド
@@ -28,10 +28,9 @@ public class DeathInv extends JavaPlugin {
     public void onEnable() {
 
         // 初期化
-        khandler = new KitHandler();
         udhandler = new UserDataHandler(getDataFolder());
-        tempItems = new Hashtable<String, String>();
-        tempArmors = new Hashtable<String, String>();
+        tempItems = new Hashtable<String, ConfigurationSection>();
+        tempArmors = new Hashtable<String, ConfigurationSection>();
 
         // コマンド登録
         getCommand("deathinv").setExecutor(new DICommand());

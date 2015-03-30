@@ -6,14 +6,20 @@
 package com.github.ucchyocean.mdi;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 
 import org.bukkit.ChatColor;
+import org.bukkit.Material;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.configuration.ConfigurationSection;
+import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.entity.Player;
 import org.bukkit.inventory.ItemStack;
 import org.bukkit.inventory.PlayerInventory;
+
+import com.github.ucchyocean.mdi.item.ItemConfigParseException;
 
 /**
  * @author ucchy
@@ -128,7 +134,14 @@ public class DICommand implements CommandExecutor {
                 return true;
             }
 
-            ArrayList<String> log = DeathInv.udhandler.getUserLog(name, id);
+            HashMap<String, ItemStack> log;
+            try {
+                log = DeathInv.udhandler.getUserLog(name, id);
+            } catch (ItemConfigParseException e1) {
+                e1.printStackTrace();
+                sender.sendMessage(PREERR + "Item parser exception : " + e1.getLocalizedMessage());
+                return true;
+            }
             if ( log == null ) {
                 sender.sendMessage(PREERR + "Player log was not found, or player was not logged.");
                 return true;
@@ -142,27 +155,23 @@ public class DICommand implements CommandExecutor {
             player.getInventory().setBoots(null);
 
             // ログからインベントリを復元する
-            try {
-                if ( log.get(0).length() > 0 ) {
-                    ArrayList<ItemStack> items = DeathInv.khandler.convertToItemStack(log.get(0));
-                    for ( ItemStack item : items ) {
-                        if ( item != null )
-                            player.getInventory().addItem(item);
-                    }
+            for ( String key : log.keySet() ) {
+                ItemStack item = log.get(key);
+                if ( key.equals("boots") ) {
+                    player.getInventory().setBoots(item);
+                } else if ( key.equals("leggings") ) {
+                    player.getInventory().setLeggings(item);
+                } else if ( key.equals("chestplate") ) {
+                    player.getInventory().setChestplate(item);
+                } else if ( key.equals("helmet") ) {
+                    player.getInventory().setHelmet(item);
+                } else {
+                    player.getInventory().addItem(item);
                 }
-                ArrayList<ItemStack> armors = DeathInv.khandler.convertToItemStack(log.get(1));
-                player.getInventory().setHelmet(armors.get(0));
-                player.getInventory().setChestplate(armors.get(1));
-                player.getInventory().setLeggings(armors.get(2));
-                player.getInventory().setBoots(armors.get(3));
-
-                sender.sendMessage(PREINFO + "Your inv was restored from " + name + ":" + id + ".");
-                return true;
-                
-            } catch (Exception e) {
-                sender.sendMessage(PREERR + e.getMessage());
-                return true;
             }
+
+            sender.sendMessage(PREINFO + "Your inv was restored from " + name + ":" + id + ".");
+            return true;
 
         } else if ( args[0].equalsIgnoreCase("temp") ) {
 
@@ -174,10 +183,12 @@ public class DICommand implements CommandExecutor {
             Player player = (Player)sender;
             PlayerInventory inv = player.getInventory();
 
-            DeathInv.tempItems.put(player.getName(),
-                    DeathInv.khandler.convertInvToItemString(inv) );
-            DeathInv.tempArmors.put(player.getName(),
-                    DeathInv.khandler.convertArmorToItemString(inv) );
+            YamlConfiguration itemConfig = new YamlConfiguration();
+            YamlConfiguration armorConfig = new YamlConfiguration();
+            DIUtility.convInventoryItemsToSection(inv, itemConfig);
+            DIUtility.convInventoryArmorsToSection(inv, armorConfig);
+            DeathInv.tempItems.put(player.getName(), itemConfig);
+            DeathInv.tempArmors.put(player.getName(), armorConfig);
 
             sender.sendMessage(PREINFO + "Your inv was stored to temporary data.");
             return true;
@@ -191,9 +202,9 @@ public class DICommand implements CommandExecutor {
 
             Player player = (Player)sender;
 
-            String tempItems = DeathInv.tempItems.get(player.getName());
-            String tempArmors = DeathInv.tempArmors.get(player.getName());
-            if ( tempItems == null ) {
+            ConfigurationSection tempItems = DeathInv.tempItems.get(player.getName());
+            ConfigurationSection tempArmors = DeathInv.tempArmors.get(player.getName());
+            if ( tempItems == null || tempArmors == null ) {
                 sender.sendMessage(PREERR + "Your inv was not found in temporary data.");
                 return true;
             }
@@ -207,40 +218,29 @@ public class DICommand implements CommandExecutor {
 
             // ログからインベントリを復元する
             try {
-                if ( tempItems .length() > 0 ) {
-                    ArrayList<ItemStack> items = DeathInv.khandler.convertToItemStack(tempItems);
-                    for ( ItemStack item : items ) {
-                        if ( item != null )
+                if ( tempItems.getKeys(false).size() > 0 ) {
+                    HashMap<String, ItemStack> items =
+                            DIUtility.convSectionToItemStack(tempItems);
+                    for ( ItemStack item : items.values() ) {
+                        if ( item != null && item.getType() != Material.AIR ) {
                             player.getInventory().addItem(item);
+                        }
                     }
                 }
-                ArrayList<ItemStack> armors = DeathInv.khandler.convertToItemStack(tempArmors);
-                player.getInventory().setHelmet(armors.get(0));
-                player.getInventory().setChestplate(armors.get(1));
-                player.getInventory().setLeggings(armors.get(2));
-                player.getInventory().setBoots(armors.get(3));
+                HashMap<String, ItemStack> armors =
+                        DIUtility.convSectionToItemStack(tempArmors);
+                player.getInventory().setHelmet(armors.get("helmet"));
+                player.getInventory().setChestplate(armors.get("chestplate"));
+                player.getInventory().setLeggings(armors.get("leggings"));
+                player.getInventory().setBoots(armors.get("boots"));
 
                 sender.sendMessage(PREINFO + "Your inv was restored from temporary data.");
                 return true;
-                
+
             } catch (Exception e) {
                 sender.sendMessage(PREERR + e.getMessage());
                 return true;
             }
-
-        } else if ( args[0].equalsIgnoreCase("test") ) {
-
-            if ( !(sender instanceof Player) ) {
-                sender.sendMessage(PREERR + "This command can only be run by a player.");
-                return true;
-            }
-
-            Player player = (Player)sender;
-            PlayerInventory inv = player.getInventory();
-            player.sendMessage(DeathInv.khandler.convertInvToItemString(inv));
-            player.sendMessage(DeathInv.khandler.convertArmorToItemString(inv));
-
-            return true;
         }
 
         return false;

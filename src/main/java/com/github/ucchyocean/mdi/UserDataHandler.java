@@ -11,11 +11,17 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Date;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Set;
 
 import org.bukkit.configuration.ConfigurationSection;
 import org.bukkit.configuration.file.YamlConfiguration;
+import org.bukkit.entity.Player;
+import org.bukkit.inventory.ItemStack;
+import org.bukkit.inventory.PlayerInventory;
+
+import com.github.ucchyocean.mdi.item.ItemConfigParseException;
 
 /**
  * @author ucchy
@@ -32,7 +38,7 @@ public class UserDataHandler {
     private static final String SHOW_END =
             "&7----------------------------------------";
 
-    private static final String USER_FOLDER = "user";
+    private static final String USER_FOLDER = "data";
     protected static final int MAX_LOG_SIZE = 1000;
     protected static final int PAGE_SIZE = 10;
 
@@ -56,19 +62,17 @@ public class UserDataHandler {
 
     /**
      * ユーザーのログを追加する。MAX_LOG_SIZEを超えた場合、古いログが削除される。
-     * @param name ユーザー名
-     * @param items 記録するアイテム情報（kit形式文字列）
-     * @param armors 記録する防具情報（kit形式文字列）
+     * @param player プレイヤー
      * @param deathMessage 記録するデスメッセージ
      */
-    public void addUserLog(String name, String items, String armors, String deathMessage) {
+    public void addUserLog(Player player, String deathMessage) {
 
         Date date = new Date();
         String key = keyDateFormat.format(date);
         String time = logDateFormat.format(date);
 
         // ファイルからロード（なければ作る）
-        File file = new File(folder, name + ".yml");
+        File file = new File(folder, player.getName() + ".yml");
         if ( !file.exists() ) {
             YamlConfiguration config = new YamlConfiguration();
             try {
@@ -81,9 +85,13 @@ public class UserDataHandler {
 
         // データを追加
         config.set(key + ".time", time);
-        config.set(key + ".items", items);
-        config.set(key + ".armors", armors);
         config.set(key + ".msg", deathMessage);
+
+        PlayerInventory inv = player.getInventory();
+        DIUtility.convInventoryItemsToSection(
+                inv, config.createSection(key + ".deathItems"));
+        DIUtility.convInventoryArmorsToSection(
+                inv, config.createSection(key + ".deathArmors"));
 
         // ログデータがMAX値を超える場合は、古いものを削除する
         Set<String> dataKeys = config.getKeys(false);
@@ -92,7 +100,6 @@ public class UserDataHandler {
             // ソート
             List<String> sortedKeys = new ArrayList<String>(dataKeys);
             Collections.sort(sortedKeys);
-            Collections.reverse(sortedKeys);
 
             while ( sortedKeys.size() > MAX_LOG_SIZE ) {
                 String oldKey = sortedKeys.get(0);
@@ -113,9 +120,9 @@ public class UserDataHandler {
      * ユーザーログを取得する
      * @param name ユーザー名
      * @param id ログID
-     * @return ログ情報（1行目がitems, 2行目がarmors, ログがなければnullになる。）
+     * @return ログ情報
      */
-    public ArrayList<String> getUserLog(String name, int id) {
+    public HashMap<String, ItemStack> getUserLog(String name, int id) throws ItemConfigParseException {
 
         // ファイルからロード（なければnullを返して終了）
         File file = new File(folder, name + ".yml");
@@ -135,10 +142,20 @@ public class UserDataHandler {
         Collections.sort(sortedKeys);
         Collections.reverse(sortedKeys);
 
-        ArrayList<String> result = new ArrayList<String>();
-        result.add( config.getString(sortedKeys.get(id - 1) + ".items", "") );
-        result.add( config.getString(sortedKeys.get(id - 1) + ".armors", "") );
-        return result;
+        // 取得
+        ConfigurationSection is =
+                config.getConfigurationSection(sortedKeys.get(id - 1) + ".deathItems");
+        ConfigurationSection as =
+                config.getConfigurationSection(sortedKeys.get(id - 1) + ".deathArmors");
+        HashMap<String, ItemStack> items = DIUtility.convSectionToItemStack(is);
+        HashMap<String, ItemStack> armors = DIUtility.convSectionToItemStack(as);
+
+        // マージ
+        for ( String key : armors.keySet() ) {
+            items.put(key, armors.get(key));
+        }
+
+        return items;
     }
 
     /**
@@ -226,13 +243,13 @@ public class UserDataHandler {
     private ArrayList<String> convToListMessage(int id, ConfigurationSection section) {
 
         String time = section.getString("time", "");
-        String items = section.getString("items", "");
-        String armors = section.getString("armors", "");
         String msg = section.getString("msg", "");
+        int itemCount = section.getConfigurationSection("deathItems").getKeys(false).size();
+        int armorCount = section.getConfigurationSection("deathArmors").getKeys(false).size();
 
         ArrayList<String> result = new ArrayList<String>();
         result.add(String.format("&7| ID:&c%d&7 %s  items:&c%d&7, armors:&c%d&7",
-                id, time, getItemCount(items), getItemCount(armors)) );
+                id, time, itemCount, armorCount) );
         result.add("&7|   &c" + msg);
 
         return result;
@@ -247,56 +264,40 @@ public class UserDataHandler {
 
         String time = section.getString("time", "");
         String msg = section.getString("msg", "");
-        String items_org = section.getString("items", "");
-        String[] items = items_org.split(",");
-        String[] armors = section.getString("armors", "").split(",");
-        
-        System.out.println("debug : <" + section.getString("items", "") + ">");
-        System.out.println("debug : " + items.length);
-        for ( String i : items ) {
-            System.out.println("       <" + i + ">");
-        }
 
-        ArrayList<String> result = new ArrayList<String>();
-        result.add("&7| &c" + time);
-        result.add("&7|   &c" + msg);
-        result.add("&7| items: ");
-        if ( items_org.length() > 0 ) {
-            for ( String item : items ) {
-                try {
-                    result.addAll(DeathInv.khandler.getDescFromItemInfo(item));
-                } catch (Exception e) {
-                    result.add(e.getMessage());
+        try {
+            HashMap<String, ItemStack> items =
+                    DIUtility.convSectionToItemStack(section.getConfigurationSection("deathItems"));
+            HashMap<String, ItemStack> armors =
+                    DIUtility.convSectionToItemStack(section.getConfigurationSection("deathArmors"));
+
+            ArrayList<String> result = new ArrayList<String>();
+            result.add("&7| &c" + time);
+            result.add("&7|   &c" + msg);
+            if ( items.size() > 0 ) {
+                result.add("&7| items: ");
+                for ( String key : items.keySet() ) {
+                    result.add("&7|   " + key + ":");
+                    ItemStack item = items.get(key);
+                    result.addAll( DIUtility.getItemInfoWithPrefix(item, "&7|     &f") );
                 }
             }
-        }
-        result.add("&7| armors: ");
-        for ( String armor : armors ) {
-            try {
-                result.addAll(DeathInv.khandler.getDescFromItemInfo(armor));
-            } catch (Exception e) {
-                result.add(e.getMessage());
+            if ( items.size() > 0 ) {
+                result.add("&7| armors: ");
+                for ( String key : armors.keySet() ) {
+                    result.add("&7|   " + key + ":");
+                    ItemStack item = armors.get(key);
+                    result.addAll( DIUtility.getItemInfoWithPrefix(item, "&7|     &f") );
+                }
             }
+
+            return result;
+
+        } catch (ItemConfigParseException e) {
+            ArrayList<String> result = new ArrayList<String>();
+            result.add("&a" + e.toString());
+            return result;
         }
-
-        return result;
-    }
-
-    private int getItemCount(String info) {
-
-        if ( info == null || info.length() == 0 ) {
-            return 0;
-        }
-
-        int count = 0;
-        String[] items = info.split(",");
-        for ( String i : items ) {
-            if ( !i.equals("0") ) {
-                count++;
-            }
-        }
-
-        return count;
     }
 
     /**
